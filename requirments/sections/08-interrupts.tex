@@ -1,0 +1,62 @@
+% =====================================================================
+\section{Interrupts, exceptions and reset}
+\label{sec:int}
+% =====================================================================
+
+The processor has three non-maskable exceptions (WOVF, WUNF, ILL) and two
+maskable interrupts (INT0, \IIC), served through a fixed vector table at the
+start of program memory; the user program starts at \hex{0020}.
+
+\subsection{Vector table}
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}l X l l@{}}
+  \toprule
+  \textbf{Address} & \textbf{Source} & \textbf{Type} & \textbf{Priority} \\
+  \midrule
+  \hex{0000} & RESET & -- & highest \\
+  \hex{0004} & WOVF: register window overflow & exception, non-maskable & 1 \\
+  \hex{0008} & WUNF: register window underflow & exception, non-maskable & 2 \\
+  \hex{000C} & ILL: illegal instruction / \texttt{TRAP} & exception, non-maskable & 3 \\
+  \hex{0010} & INT0: external interrupt & maskable & 4 \\
+  \hex{0014} & \IIC: operation complete & maskable & 5 \\
+  \hex{0018}--\hex{001F} & Reserved & -- & -- \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+Each vector is 4 bytes long, which fits a \texttt{JMP addr16} instruction (3 bytes).
+
+\subsection{Requirements}
+
+\begin{reqtable}
+\req{INT-001}{A maskable interrupt \MUST{} be taken only when SR.IE = 1, its
+  bit in INTEN is set and its flag in INTFLG is set.}
+\req{INT-002}{Interrupts \MUST{} be taken only between instructions;
+  exceptions (WOVF, WUNF, ILL) are raised before execution of the instruction
+  that caused them.}
+\req{INT-003}{On entry to a handler, the processor \MUST{} push PC (2 bytes)
+  and SR (1 byte) onto the stack, clear SR.IE and jump to the vector address.}
+\req{INT-004}{For an interrupt, the saved PC \MUST{} point to the next
+  instruction; for an exception, to the instruction that raised it.}
+\req{INT-005}{\texttt{RETI} \MUST{} pop SR and PC from the stack (restoring IE).}
+\req{INT-006}{When several sources are pending, the source with the highest
+  priority according to the vector table \MUST{} be served first.}
+\req{INT-007}{The latency from the end of the current instruction to the first
+  instruction of the handler \SHOULD{} not exceed 8 cycles; the actual value
+  \MUST{} be documented.}
+\req{INT-008}{The INT0 input \MUST{} be synchronised to CLK; the interrupt is
+  triggered on the falling edge.}
+\req{INT-009}{A handler that uses \texttt{WINC} \MUST{} execute \texttt{WDEC}
+  before \texttt{RETI}; the WOVF/WUNF handlers \MUSTNOT{} use \texttt{WINC} or
+  \texttt{WDEC}.}
+\req{INT-010}{\texttt{HALT} \MUST{} suspend execution until an interrupt occurs
+  (also with IE = 0, in which case execution resumes at the next instruction
+  without entering the handler).}
+\req{INT-011}{After reset: PC = \hex{0000}, SR = \hex{00}, CWP = WSTART = 0,
+  INTEN = INTFLG = 0, \IIC{} controller disabled, SP = \hex{0800} (the
+  first \texttt{PUSH} writes the last byte of data memory, \hex{07FF}).}
+\req{INT-012}{The \texttt{RST\_N} signal \MUST{} be active low, with
+  asynchronous assertion and synchronous de-assertion (2 flip-flops).}
+\end{reqtable}

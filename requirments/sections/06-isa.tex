@@ -1,0 +1,159 @@
+% =====================================================================
+\section{Instruction set architecture (ISA)}
+\label{sec:isa}
+% =====================================================================
+
+Instructions are 1--4 bytes long: an opcode byte, an optional operand
+specifier byte and 0--2 extension bytes (immediate, displacement or address).
+The CISC core consists of 11 two-operand operations, each available in 7
+addressing modes, including memory as the destination.
+
+\subsection{Instruction formats}
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}l l l l X@{}}
+  \toprule
+  \textbf{Format} & \textbf{Byte 0} & \textbf{Byte 1} & \textbf{Bytes 2--3} & \textbf{Used for} \\
+  \midrule
+  A & opcode & --        & --                        & No operands (\texttt{NOP}, \texttt{RET}, \texttt{EI}, \ldots) \\
+  B & opcode & specifier & --                        & Register / register pair \\
+  C & opcode & specifier & imm8 / disp8 / addr8      & Immediate, displacement, SFR address \\
+  D & opcode & specifier & addr16 (LSB, MSB)         & Direct address \\
+  E & opcode & rel8 / addr16 LSB & addr16 MSB       & Jumps and calls (2 B with rel8, 3 B with addr16) \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+For the two-operand group (opcodes \hex{00}--\hex{7F}) the opcode byte holds the
+operation number OP in bits 7:3 and the addressing mode MODE in bits 2:0. The
+specifier byte holds Rd in bits 7:5, Rs in bits 4:2 (for indirect modes: the
+even number of the register pair), the direction bit D in bit 1
+(0: result in Rd, 1: result in operand M) and a reserved 0 in bit 0
+(Figure~\ref{fig:format}).
+
+\begin{figure}[htbp]
+  \centering
+  \input{figures/instruction-format}
+  \caption{Encoding of a two-operand instruction (opcode = OP $\cdot$ 8 + MODE)}
+  \label{fig:format}
+\end{figure}
+
+\subsection{Addressing modes}
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}l l X l l@{}}
+  \toprule
+  \textbf{MODE} & \textbf{Name} & \textbf{Operand M} & \textbf{D=1 allowed} & \textbf{Length} \\
+  \midrule
+  000 & Register              & Rs                                   & no  & 2 B \\
+  001 & Immediate             & imm8                                 & no  & 3 B \\
+  010 & Direct                & mem[addr16]                          & yes & 4 B \\
+  011 & Indirect              & mem[Rs+1:Rs]                         & yes & 2 B \\
+  100 & Indirect post-increment & mem[pair], then pair $\leftarrow$ pair + 1 & yes & 2 B \\
+  101 & --                    & Reserved (ILL exception)             & --  & -- \\
+  110 & Indexed               & mem[pair + signed disp8]             & yes & 3 B \\
+  111 & SFR                   & sfr[addr8]                           & yes & 3 B \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Two-operand operations}
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}l l X l@{}}
+  \toprule
+  \textbf{OP} & \textbf{Mnemonic} & \textbf{Operation (D=0)} & \textbf{Flags} \\
+  \midrule
+  0  & \texttt{MOV} & Rd $\leftarrow$ M                         & Z, N \\
+  1  & \texttt{ADD} & Rd $\leftarrow$ Rd + M                    & C, Z, N, V \\
+  2  & \texttt{ADC} & Rd $\leftarrow$ Rd + M + C                & C, Z, N, V \\
+  3  & \texttt{SUB} & Rd $\leftarrow$ Rd $-$ M                  & C, Z, N, V \\
+  4  & \texttt{SBC} & Rd $\leftarrow$ Rd $-$ M $-$ C            & C, Z, N, V \\
+  5  & \texttt{AND} & Rd $\leftarrow$ Rd $\wedge$ M             & Z, N; V = 0 \\
+  6  & \texttt{OR}  & Rd $\leftarrow$ Rd $\vee$ M               & Z, N; V = 0 \\
+  7  & \texttt{XOR} & Rd $\leftarrow$ Rd $\oplus$ M             & Z, N; V = 0 \\
+  8  & \texttt{CMP} & Rd $-$ M, flags only                      & C, Z, N, V \\
+  9  & \texttt{TST} & Rd $\wedge$ M, flags only                 & Z, N; V = 0 \\
+  10 & \texttt{MUL} & Rd+1:Rd $\leftarrow$ Rd $\times$ M (unsigned); Rd even, D = 0 & Z (16-bit result), C = high byte $\neq$ 0 \\
+  11--15 & -- & Reserved (ILL exception) & -- \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+With D=1 the result is written to M; for example \texttt{ADD [0x0420], R3}
+adds R3 to a memory location (read--modify--write in a single instruction).
+For \texttt{MOV} with D=1: M $\leftarrow$ Rd.
+
+\subsection{Other instructions}
+
+{\small
+\begin{xltabular}{\linewidth}{@{}l >{\raggedright\arraybackslash}p{4.3cm} l >{\raggedright\arraybackslash}X@{}}
+  \toprule
+  \textbf{Opcode} & \textbf{Mnemonic} & \textbf{Format} & \textbf{Operation} \\
+  \midrule
+  \endfirsthead
+  \toprule
+  \textbf{Opcode} & \textbf{Mnemonic} & \textbf{Format} & \textbf{Operation} \\
+  \midrule
+  \endhead
+  \bottomrule
+  \endfoot
+  \hex{80}--\hex{89} & \texttt{INC, DEC, NEG, NOT, CLR, SHL, SHR, ASR, RLC, RRC} & B (Rd) & Single-operand operations on Rd \\
+  \hex{8D} / \hex{8E} & \texttt{PUSH Rd} / \texttt{POP Rd} & B & SP $\leftarrow$ SP$-$1, mem[SP] $\leftarrow$ Rd / Rd $\leftarrow$ mem[SP], SP $\leftarrow$ SP+1 \\
+  \hex{8F} / \hex{90} & \texttt{INCW} / \texttt{DECW} & B (pair) & 16-bit increment / decrement of a pair, flag Z \\
+  \hex{91} & \texttt{LPM Rd, [pair]} & B & Rd $\leftarrow$ program memory[pair] (\reqref{MEM-005}) \\
+  \hex{B0}--\hex{B5} & \texttt{JZ, JNZ, JC, JNC, JN, JNN} & E (rel8) & Conditional relative jump, $-128 \ldots +127$ \\
+  \hex{B9} & \texttt{JMP addr16} & E & Unconditional jump \\
+  \hex{BB} & \texttt{CALL addr16} & E & Push PC and jump \\
+  \hex{BD} & \texttt{DJNZ Rd, rel8} & C & Rd $\leftarrow$ Rd $-$ 1; jump if Rd $\neq$ 0 \\
+  \hex{BE} & \texttt{CALLW addr16} & E & \texttt{WINC}, then \texttt{CALL} \\
+  \hex{C0} / \hex{C1} / \hex{C2} & \texttt{RET} / \texttt{RETI} / \texttt{RETW} & A & Return / return from interrupt / \texttt{WDEC} + \texttt{RET} \\
+  \hex{C3} / \hex{C4} & \texttt{WINC} / \texttt{WDEC} & A & Move window by $+4$ / $-4$ registers \\
+  \hex{C5} / \hex{C6} & \texttt{PUSHF} / \texttt{POPF} & A & Push / pop SR \\
+  \hex{C7} / \hex{C8} & \texttt{EI} / \texttt{DI} & A & IE $\leftarrow$ 1 / IE $\leftarrow$ 0 \\
+  \hex{C9} & \texttt{HALT} & A & Sleep until interrupt \\
+  \hex{D0} & \texttt{I2CW Ra, Rd} & B & Write byte Rd to slave at address Ra (Section~\ref{sec:i2c-hl}) \\
+  \hex{D1} & \texttt{I2CR Rd, Ra} & B & Read one byte from slave Ra into Rd \\
+  \hex{D2} & \texttt{I2CRR Rd, Ra} & B & Register read: Ra = slave address, Ra+1 = register number (repeated START) \\
+  \hex{D3} & \texttt{I2CRRN [pair], Ra, \#n} & C (imm8 = n) & Read n bytes starting at register Ra+1 of slave Ra into data memory at [pair], pair $\leftarrow$ pair + n \\
+  \hex{D4} & \texttt{I2CWN [pair], Ra, \#n} & C (imm8 = n) & Write n bytes from data memory at [pair] to slave Ra, pair $\leftarrow$ pair + n \\
+  \hex{F0} & \texttt{NOP} & A & No operation \\
+  \hex{FF} & \texttt{TRAP} & A & Software exception (ILL vector); \hex{FF} = erased memory \\
+  others & -- & -- & Reserved, ILL exception \\
+\end{xltabular}
+}
+
+\subsection{Requirements}
+
+\begin{reqtable}
+\req{ISA-001}{The processor \MUST{} implement all instructions listed in the
+  instruction tables, with the specified encoding.}
+\req{ISA-002}{Every two-operand operation \MUST{} work in all 7 addressing
+  modes; MODE = 101 is reserved and \MUST{} raise the ILL exception.}
+\req{ISA-003}{D=1 combined with the register or immediate mode, \texttt{MUL}
+  with D=1 or an odd Rd, and an indirect mode with an odd Rs \MUST{} raise the
+  ILL exception.}
+\req{ISA-004}{Instructions with D=1 \MUST{} perform the read--modify--write of
+  the memory operand as an atomic operation (no interrupt is taken in
+  between).}
+\req{ISA-005}{Relative jumps \MUST{} compute the target relative to the
+  address of the next instruction.}
+\req{ISA-006}{\texttt{CALL} \MUST{} push the 16-bit return address onto the
+  stack (high byte first, so that the low byte ends up at the lower address).}
+\req{ISA-007}{The number of clock cycles for every instruction and addressing
+  mode \MUST{} be documented in the appendix ``Instruction timing table''.}
+\req{ISA-040}{The instructions \texttt{I2CW}, \texttt{I2CR}, \texttt{I2CRR},
+  \texttt{I2CRRN} and \texttt{I2CWN} \MUST{} stall execution until the
+  transaction completes or times out, and \MUST{} set C = 1 on error (NACK,
+  arbitration lost, timeout).}
+\req{ISA-041}{For \texttt{I2CRRN} and \texttt{I2CWN} the pair \MUST{} be given
+  by its even register number in the Rd field and Ra in the Rs field; an odd
+  pair number or n = 0 \MUST{} raise the ILL exception. After the instruction
+  the pair \MUST{} point just past the last byte actually transferred (also
+  when the transaction is aborted by an error).}
+\req{ISA-050}{Opcode \hex{FF} and every reserved opcode \MUST{} raise the ILL
+  exception; the saved PC points to that instruction.}
+\end{reqtable}

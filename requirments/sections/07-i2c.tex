@@ -1,0 +1,175 @@
+% =====================================================================
+\section{\texorpdfstring{\IIC{}}{I2C} controller}
+\label{sec:i2c}
+% =====================================================================
+
+The \IIC{} controller operates as a bus master (7-bit addressing, 100 and
+400\,kHz) and offers two levels of use: six SFRs for full control of a
+transaction, and five high-level instructions (\texttt{I2CW},
+\texttt{I2CR}, \texttt{I2CRR}, and the multi-byte \texttt{I2CRRN},
+\texttt{I2CWN}) that cover the common cases in a single line of code.
+
+\subsection{Rationale for the register set}
+
+Three registers alone (slave address, byte to send, received byte) are enough
+to write or read a single byte, but they do not allow:
+
+\begin{itemize}
+  \item reading a sensor register, which requires writing the register number
+        followed by a \textbf{repeated START} without a STOP;
+  \item multi-byte transactions (e.g.\ an EEPROM page write, reading 6 bytes
+        from an accelerometer);
+  \item error detection: missing ACK (device not responding), arbitration
+        lost, a stuck bus;
+  \item setting the SCL frequency and checking whether a transfer has finished.
+\end{itemize}
+
+The three registers are therefore kept (I2CADR, I2CTXD, I2CRXD), and a
+control, a status and a clock divider register are added.
+
+\subsection{Registers}
+
+\needspace{14\baselineskip}
+\paragraph{I2CCON (\hex{10})}
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}l l X@{}}
+  \toprule
+  \textbf{Bit} & \textbf{Name} & \textbf{Meaning} \\
+  \midrule
+  7 & EN    & Controller enable \\
+  6 & IE    & Interrupt when an operation completes (DONE) \\
+  5 & START & Write 1: START (or repeated START if the bus is already owned)
+              followed by the address byte \{I2CADR, RW\}; cleared by hardware \\
+  4 & STOP  & Write 1: STOP condition; cleared by hardware \\
+  3 & RD    & Write 1: receive one byte into I2CRXD; cleared by hardware \\
+  2 & ACKS  & Acknowledge sent after a received byte: 0 = ACK, 1 = NACK (last byte) \\
+  1 & RW    & Direction in the address phase: 0 = write, 1 = read \\
+  0 & --    & Reserved \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\needspace{14\baselineskip}
+\paragraph{I2CSTA (\hex{11})}
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}l l X@{}}
+  \toprule
+  \textbf{Bit} & \textbf{Name} & \textbf{Meaning} \\
+  \midrule
+  0 & TIP   & Byte transfer in progress \\
+  1 & DONE  & Operation complete (R/W1C); interrupt source \\
+  2 & NACK  & The slave did not acknowledge the last byte \\
+  3 & ARBL  & Arbitration lost (R/W1C) \\
+  4 & BB    & Bus busy (between START and STOP) \\
+  5 & RXRDY & New byte in I2CRXD; cleared by reading I2CRXD \\
+  6 & TOUT  & Timeout expired (R/W1C) \\
+  7 & --    & Reserved \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+Writing I2CTXD while BB = 1 starts transmission of that byte. The SCL
+frequency is
+\begin{equation}
+  f_{\mathrm{SCL}} = \frac{f_{\mathrm{CLK}}}{4 \cdot (\mathrm{I2CBRG} + 1)}
+  \label{eq:scl}
+\end{equation}
+
+Example for $f_{\mathrm{CLK}} = 16$\,MHz: I2CBRG = 39 gives 100\,kHz,
+I2CBRG = 9 gives 400\,kHz.
+
+\subsection{High-level instructions}
+\label{sec:i2c-hl}
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}l X@{}}
+  \toprule
+  \textbf{Instruction} & \textbf{Bus sequence} \\
+  \midrule
+  \texttt{I2CW Ra, Rd}  & START, address(Ra)+W, byte Rd, STOP \\
+  \texttt{I2CR Rd, Ra}  & START, address(Ra)+R, byte $\rightarrow$ Rd (NACK), STOP \\
+  \texttt{I2CRR Rd, Ra} & START, address(Ra)+W, byte Ra+1, repeated START,
+                          address(Ra)+R, byte $\rightarrow$ Rd (NACK), STOP \\
+  \texttt{I2CRRN [pair], Ra, \#n} & START, address(Ra)+W, byte Ra+1, repeated START,
+                          address(Ra)+R, n bytes $\rightarrow$ mem[pair\ldots pair+n$-$1]
+                          (ACK after each byte, NACK after the last), STOP \\
+  \texttt{I2CWN [pair], Ra, \#n} & START, address(Ra)+W, n bytes from
+                          mem[pair\ldots pair+n$-$1], STOP \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+The multi-byte instructions transfer data directly between the \IIC{}
+controller and data memory; the bytes are stored in bus order at increasing
+addresses. To write device registers with \texttt{I2CWN}, the first byte of
+the buffer holds the register number. Because the processor stalls for the
+whole transaction (about 9 SCL periods per byte: roughly 0.8\,ms for 6 bytes
+at 100\,kHz), longer transfers \SHOULD{} use 400\,kHz.
+
+Example: reading 6 bytes (registers \hex{3B}--\hex{40}) from an
+accelerometer at address \hex{68} into a buffer:
+
+\begin{lstlisting}
+    MOV    R2, #0x68        ; slave address
+    MOV    R3, #0x3B        ; first register
+    MOV    R4, #<buf        ; R5:R4 = buffer address
+    MOV    R5, #>buf
+    I2CRRN [R4], R2, #6     ; buf[0..5] <- registers 0x3B..0x40
+    JC     i2c_error
+\end{lstlisting}
+
+\begin{figure}[htbp]
+  \centering
+  \input{figures/i2c-frame}
+  \caption{\IIC{} frame generated by \texttt{I2CRR}: register number write, repeated START, single-byte read}
+  \label{fig:i2cframe}
+\end{figure}
+
+The repeated START (Sr) keeps ownership of the bus between writing the
+register number and reading the data, so no other master can intervene
+(Figure~\ref{fig:i2cframe}).
+
+Example: reading register \hex{75} from a sensor at address \hex{68}:
+
+\begin{lstlisting}
+    MOV   R2, #0x68     ; slave address
+    MOV   R3, #0x75     ; register number
+    I2CRR R0, R2        ; R0 <- data read
+    JC    i2c_error     ; C = 1: NACK / timeout
+\end{lstlisting}
+
+\subsection{Requirements}
+
+\begin{reqtable}
+\req{I2C-001}{The controller \MUST{} operate as a master only, with 7-bit
+  addressing, in accordance with NXP UM10204. Slave mode and 10-bit
+  addressing are not supported.}
+\req{I2C-002}{The controller \MUST{} support Standard mode (100\,kHz) and Fast
+  mode (400\,kHz); the frequency is set by I2CBRG according to
+  Equation~\eqref{eq:scl}.}
+\req{I2C-003}{The controller \MUST{} generate START, repeated START and STOP
+  conditions, and transmit and receive bytes with ACK/NACK handling.}
+\req{I2C-004}{The controller \MUST{} support clock stretching by the slave by
+  sampling the SCL line.}
+\req{I2C-005}{The controller \MUST{} detect arbitration loss (SDA read back
+  differs from SDA driven), release the bus and set ARBL.}
+\req{I2C-006}{The controller \MUST{} abort the operation and set TOUT when SCL
+  is held low longer than the timeout (synthesis parameter, default 25\,ms).}
+\req{I2C-007}{SDA and SCL \MUST{} be driven as open-drain (low or
+  high-impedance only); the pull-up resistors are external.}
+\req{I2C-008}{The SDA and SCL inputs \MUST{} be synchronised to CLK (at least
+  2 flip-flops) and \SHOULD{} have a glitch filter suppressing pulses shorter
+  than 50\,ns.}
+\req{I2C-009}{Setting DONE while IE = 1 \MUST{} raise the \IIC{} interrupt.}
+\req{I2C-010}{The instructions \texttt{I2CW}, \texttt{I2CR}, \texttt{I2CRR},
+  \texttt{I2CRRN} and \texttt{I2CWN} \MUST{} use the same controller and
+  leave the final status in I2CSTA.}
+\req{I2C-011}{For \texttt{I2CRRN} and \texttt{I2CWN} the controller \MUST{}
+  read and write data memory directly, one byte per transferred \IIC{} byte
+  (\reqref{ISA-041}).}
+\end{reqtable}

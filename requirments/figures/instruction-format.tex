@@ -1,0 +1,44 @@
+% ---------------------------------------------------------------------
+%  Two-operand instruction encoding: opcode byte + specifier byte
+%  One bit = 36 units, 1 unit = 0.2 mm, y grows downwards.
+%  \field{byte x0}{msb}{lsb}{label}{style}
+% ---------------------------------------------------------------------
+\begin{tikzpicture}[
+    x=0.2mm, y=-0.2mm,
+    fld/.style={draw=lineclr, line width=0.6pt},
+    hl/.style={draw=accent, fill=accent!12, line width=0.9pt},
+    bitno/.style={font=\tiny, text=black!55},
+  ]
+  \newcommand{\field}[5]{%
+    \pgfmathsetmacro{\fx}{#1+36*(7-#2)}
+    \pgfmathsetmacro{\fw}{36*(#2-#3+1)}
+    \draw[#5] (\fx,60) rectangle ++(\fw,40);
+    \node[font=\scriptsize] at (\fx+\fw/2,80) {#4};
+  }
+
+  % --- bit numbers ----------------------------------------------------
+  \foreach \b in {0,...,7} {
+    \node[bitno] at (24+36*7-36*\b+18,50)  {\b};
+    \node[bitno] at (360+36*7-36*\b+18,50) {\b};
+  }
+
+  % --- byte 0: opcode -------------------------------------------------
+  \field{24}{7}{3}{OP (operation)}{hl}
+  \field{24}{2}{0}{MODE}{hl}
+  \node[font=\footnotesize\bfseries, anchor=north west] at (24,108) {Byte 0: opcode};
+
+  % --- byte 1: operand specifier --------------------------------------
+  \field{360}{7}{5}{Rd}{fld}
+  \field{360}{4}{2}{Rs / pair}{fld}
+  \field{360}{1}{1}{D}{fld}
+  \field{360}{0}{0}{0}{fld}
+  \node[font=\footnotesize\bfseries, anchor=north west] at (360,108) {Byte 1: operand specifier};
+
+  % --- notes ----------------------------------------------------------
+  \node[font=\scriptsize, text=black!60, anchor=north west] at (24,132)  {OP: 0--10 used, 11--15 reserved};
+  \node[font=\scriptsize, text=black!60, anchor=north west] at (24,150)  {MODE: see the addressing modes table};
+  \node[font=\scriptsize, text=black!60, anchor=north west] at (360,132) {D = 0: result in Rd};
+  \node[font=\scriptsize, text=black!60, anchor=north west] at (360,150) {D = 1: result in operand M};
+  \node[font=\scriptsize, text=black!60, anchor=north west] at (24,180)
+    {Bytes 2--3 (optional, depending on MODE): imm8 / disp8 / addr8 / addr16 (LSB first)};
+\end{tikzpicture}

@@ -1,0 +1,69 @@
+% =====================================================================
+\section{General architecture and memory}
+\label{sec:arch}
+% =====================================================================
+
+The processor is 8-bit (ALU, registers and memory words are 8 bits wide), with
+16-bit addresses for program and data in separate 64\,KiB address spaces.
+
+\subsection{General architecture}
+
+\begin{reqtable}
+\req{ARCH-001}{The processor \MUST{} be 8-bit: the ALU, the general-purpose
+  registers and the data buses are 8 bits wide.}
+\req{ARCH-002}{The processor \MUST{} use a Harvard architecture: separate
+  program and data memories with independent address and data buses.}
+\req{ARCH-003}{The processor \MUST{} implement a CISC instruction set:
+  variable-length instructions (1--4 bytes) and arithmetic/logic instructions
+  with an operand in data memory (as source or destination).}
+\req{ARCH-004}{The processor \MUST{} operate in a single clock domain,
+  synchronous to the rising edge of \texttt{CLK}.}
+\req{ARCH-005}{Instruction execution \MUST{} proceed through the phases fetch,
+  decode, operand fetch, execute and write-back. The cycle count of every
+  instruction \MUST{} be deterministic and listed in the instruction timing
+  table, except for \IIC{} instructions that wait for the bus
+  (\reqref{ISA-040}).}
+\req{ARCH-006}{The control unit \MUST{} be implemented as hard-wired control
+  based on a finite state machine (FSM), with one or more states per
+  execution phase of each instruction.}
+\req{ARCH-007}{16-bit values in memory and in register pairs \MUST{} be stored
+  little-endian (low byte at the lower address / in the lower-numbered
+  register).}
+\end{reqtable}
+
+\subsection{Program memory}
+
+\begin{reqtable}
+\req{MEM-001}{Program memory \MUST{} be organised in 8-bit words, byte-addressed.}
+\req{MEM-002}{The program counter PC \MUST{} be 16 bits wide; the program
+  address space is 64\,KiB (\hex{0000}--\hex{FFFF}).}
+\req{MEM-003}{The physical program memory \MUST{} have a fixed size of
+  8\,KiB, mapped at \hex{0000}--\hex{1FFF}. A fetch from \hex{2000}--\hex{FFFF}
+  \MUST{} return \hex{FF} (the \texttt{TRAP} instruction, see
+  \reqref{ISA-050}).}
+\req{MEM-004}{Program memory \MUST{} be read-only for the processor. Its
+  contents \MUST{} be loadable from a file (e.g. \texttt{.mem})
+  for synthesis and simulation.}
+\req{MEM-005}{The processor \MUST{} provide the \texttt{LPM} instruction (read a
+  constant byte from program memory through a register pair) to support
+  constant tables.}
+\end{reqtable}
+
+\subsection{Data memory}
+
+\begin{reqtable}
+\req{MEM-010}{Data memory \MUST{} be organised in 8-bit words, byte-addressed,
+  with a 16-bit address (64\,KiB address space).}
+\req{MEM-011}{The physical data memory \MUST{} have a fixed size of 2\,KiB,
+  mapped at \hex{0000}--\hex{07FF}. A read from \hex{0800}--\hex{FFFF}
+  \MUST{} return \hex{00}; a write to that range \MUST{} be ignored.}
+\req{MEM-012}{Data memory \MUST{} support a read or write of one byte per cycle.}
+\req{MEM-013}{Direct addressing \MUST{} cover the whole data address space
+  (16-bit address in the instruction); indirect addressing \MUST{} use a
+  register pair as the pointer.}
+\req{MEM-014}{The stack \MUST{} reside in data memory, grow downwards and be
+  addressed by the 16-bit register SP.}
+\req{MEM-015}{Special function registers (SFR) \MUST{} reside in a separate
+  8-bit address space (256 addresses), independent of data memory
+  (see Section~\ref{sec:sfr}).}
+\end{reqtable}

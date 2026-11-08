@@ -1,0 +1,76 @@
+% =====================================================================
+\section{Windowed register file}
+\label{sec:regfile}
+% =====================================================================
+
+The 64 physical registers P0--P63 form 16 blocks of 4 registers (B0--B15).
+The program sees 8 of them as R0--R7. Because the window moves by 4
+registers, adjacent windows share 4 registers, which are used to pass
+arguments and results between functions.
+
+\subsection{Mapping}
+
+Logical register $R_n$ ($n = 0 \ldots 7$) in window CWP maps to the physical
+register
+\begin{equation}
+  P_{\mathit{idx}} = (4 \cdot \mathrm{CWP} + n) \bmod 64
+  \label{eq:window}
+\end{equation}
+
+Example: with CWP\,=\,3, registers R0--R3 are P12--P15 (block B3) and R4--R7
+are P16--P19 (block B4). After \texttt{WINC} (CWP\,=\,4), the former R4--R7
+become R0--R3 (Figure~\ref{fig:windows}).
+
+\begin{figure}[htbp]
+  \centering
+  \input{figures/register-windows}
+  \caption{Register windows: 16 blocks of 4 registers, adjacent windows share one block}
+  \label{fig:windows}
+\end{figure}
+
+Each window occupies two consecutive blocks, so \texttt{WINC} allocates one new
+block while the other stays shared with the caller's window.
+
+\subsection{Calling convention}
+
+\begin{enumerate}
+  \item The caller places up to 4 arguments in R4--R7 and executes
+        \texttt{CALLW} (= \texttt{WINC} + \texttt{CALL}).
+  \item The callee sees the arguments in R0--R3; R4--R7 are its working
+        registers and, at the same time, the argument area for further calls.
+  \item The callee returns results in R0--R3 and executes \texttt{RETW}
+        (= \texttt{WDEC} + \texttt{RET}); the caller reads them in R4--R7.
+  \item More than 4 arguments are passed on the stack.
+\end{enumerate}
+
+\subsection{Requirements}
+
+\begin{reqtable}
+\req{REG-001}{The processor \MUST{} have 64 general-purpose 8-bit registers
+  (P0--P63).}
+\req{REG-002}{At any time, 8 registers R0--R7 \MUST{} be visible, mapped
+  according to Equation~\eqref{eq:window}.}
+\req{REG-003}{The window pointer CWP \MUST{} be 4 bits wide (16 positions) and
+  \MUST{} be updated modulo 16.}
+\req{REG-004}{The \texttt{WINC} instruction \MUST{} increment CWP by 1 (the
+  window moves up by 4 registers); \texttt{WDEC} \MUST{} decrement it by 1.}
+\req{REG-005}{The register file \MUST{} support two reads and one write in a
+  single cycle.}
+\req{REG-006}{Register pairs (R0:R1, R2:R3, R4:R5, R6:R7) \MUST{} be usable as
+  16-bit address pointers, with the low byte in the even register.}
+\req{REG-007}{The register WSTART (4 bits) \MUST{} point to the oldest window
+  whose contents are still held in the register file.}
+\req{REG-008}{Executing \texttt{WINC} when $(\mathrm{CWP} + 2) \bmod 16 =
+  \mathrm{WSTART}$ \MUST{} raise the window overflow exception (WOVF) before
+  CWP is changed. This allows up to 15 simultaneously live windows (14 nested
+  calls) without spilling to memory.}
+\req{REG-009}{Executing \texttt{WDEC} when $\mathrm{CWP} = \mathrm{WSTART}$
+  \MUST{} raise the window underflow exception (WUNF) before CWP is changed.}
+\req{REG-010}{After a WOVF/WUNF handler returns (\texttt{RETI}), the
+  instruction that raised the exception \MUST{} be executed again.}
+\req{REG-011}{The exception handler \MUST{} be able to access any physical
+  register through the SFRs PRIDX (index 0--63) and PRDAT (data), in order to
+  save the WSTART block to the stack (spill) or restore it (fill).}
+\req{REG-012}{Register contents after reset \MAY{} be undefined; the
+  implementation \SHOULD{} clear them in simulation to simplify debugging.}
+\end{reqtable}

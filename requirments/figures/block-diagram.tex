@@ -1,0 +1,57 @@
+% ---------------------------------------------------------------------
+%  CISC-8 block diagram
+%  Coordinates are in "units" (1 unit = 0.19 mm), y grows downwards.
+%  \cpublk{style}{x}{y}{w}{h}{name}{line 1}{line 2}
+% ---------------------------------------------------------------------
+\begin{tikzpicture}[
+    x=0.19mm, y=-0.19mm,
+    >={Stealth[length=1.8mm,width=1.4mm]},
+    blk/.style={draw=lineclr, rounded corners=1.5mm, line width=0.6pt},
+    hl/.style={draw=accent, fill=accent!12, rounded corners=1.5mm, line width=1.1pt},
+    grp/.style={draw=lineclr, fill=tint, rounded corners=1.5mm, line width=0.6pt},
+    conn/.style={draw=lineclr, line width=0.6pt},
+    lbl/.style={font=\scriptsize, text=black!60},
+  ]
+  \newcommand{\cpublk}[8]{%
+    \draw[#1] (#2,#3) rectangle ++(#4,#5);
+    \node[anchor=north west, align=left, inner sep=0pt, font=\scriptsize]
+      at (#2+10,#3+10) {\textbf{\footnotesize #6}\\[2pt]#7\\#8};
+  }
+
+  % --- core container -------------------------------------------------
+  \draw[grp] (212,52) rectangle ++(416,212);
+  \node[anchor=north west, inner sep=0pt, font=\footnotesize\bfseries]
+    at (224,60) {CISC-8 core};
+
+  % --- blocks ---------------------------------------------------------
+  \cpublk{blk}{0}{88}{172}{72}{Program memory}{8\,KiB, read-only}{\texttt{P\_ADDR} 16 / \texttt{P\_DATA} 8}
+  \cpublk{blk}{228}{88}{184}{72}{Fetch}{PC 16-bit, IR}{instruction decoder}
+  \cpublk{blk}{428}{88}{184}{72}{Control unit}{FSM}{execution phases}
+  \cpublk{blk}{660}{88}{172}{72}{Interrupts}{INT0, \IIC, exceptions}{vectors \hex{0000}--\hex{001C}}
+  \cpublk{hl}{228}{176}{184}{72}{Register file}{64 $\times$ 8-bit}{window R0--R7 (CWP)}
+  \cpublk{blk}{428}{176}{184}{72}{ALU 8-bit}{arithmetic, logic}{flags C Z N V in SR}
+  \cpublk{blk}{660}{176}{172}{72}{Data memory}{2\,KiB, stack}{\texttt{D\_ADDR} 16 / \texttt{D\_DATA} 8}
+  \cpublk{blk}{212}{360}{220}{72}{\IIC{} controller}{6 SFRs, \hex{10}--\hex{15}}{master, 100 / 400\,kHz}
+  \cpublk{blk}{0}{360}{172}{72}{\IIC{} lines}{SDA, SCL}{open-drain + pull-up}
+
+  % --- SFR bus --------------------------------------------------------
+  \draw[grp] (212,296) rectangle ++(416,32);
+  \node[font=\scriptsize] at (420,312) {SFR bus: 8-bit address, 256 registers};
+
+  % --- connections ----------------------------------------------------
+  \draw[conn,->]  (172,124) -- (228,124);
+  \draw[conn,->]  (412,124) -- (428,124);
+  \draw[conn,->]  (660,124) -- (612,124);
+  \draw[conn,->]  (520,160) -- (520,176);
+  \draw[conn,<->] (412,212) -- (428,212);
+  \draw[conn,<->] (612,212) -- (660,212);
+  \draw[conn,<->] (420,264) -- (420,296);
+  \draw[conn,<->] (322,328) -- (322,360);
+  \draw[conn,<->] (172,396) -- (212,396);
+  \draw[conn,->]  (432,396) -- (844,396) -- (844,124) -- (832,124);
+  \draw[conn,->]  (746,56) -- (746,88);
+
+  % --- labels ---------------------------------------------------------
+  \node[lbl, anchor=south] at (640,392) {\IIC{} interrupt};
+  \node[lbl, anchor=west]  at (752,68)  {\texttt{INT0\_N}};
+\end{tikzpicture}

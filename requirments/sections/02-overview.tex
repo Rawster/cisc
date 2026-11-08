@@ -1,0 +1,18 @@
+% =====================================================================
+\section{Architecture overview}
+\label{sec:overview}
+% =====================================================================
+
+CISC-8 is a core with two independent memory buses (Harvard), a 64-register
+file visible through the window R0--R7, and peripherals (\IIC, interrupts)
+accessed through the SFR address space (Figure~\ref{fig:block}).
+
+\begin{figure}[htbp]
+  \centering
+  \input{figures/block-diagram}
+  \caption{CISC-8 block diagram: separate program and data buses, peripherals on the SFR bus}
+  \label{fig:block}
+\end{figure}
+
+An instruction fetch from program memory and an operand access to data memory
+can take place in the same clock cycle, because each memory has its own bus.

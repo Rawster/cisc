@@ -1,0 +1,80 @@
+% =====================================================================
+\section{Special function registers and flags}
+\label{sec:sfr}
+% =====================================================================
+
+Control and peripheral registers reside in the 8-bit SFR address space, which
+is reachable through the SFR addressing mode of every two-operand instruction
+(e.g.\ \texttt{OR R1, [SFR:I2CCON]}). Peripherals are therefore operated with
+the same instructions as memory.
+
+\subsection{SFR map}
+
+{\small
+\begin{xltabular}{\linewidth}{@{}l l l l X@{}}
+  \toprule
+  \textbf{Address} & \textbf{Name} & \textbf{Access} & \textbf{Reset} & \textbf{Description} \\
+  \midrule
+  \endfirsthead
+  \toprule
+  \textbf{Address} & \textbf{Name} & \textbf{Access} & \textbf{Reset} & \textbf{Description} \\
+  \midrule
+  \endhead
+  \bottomrule
+  \endfoot
+  \hex{00} & SR      & R/W   & \hex{00} & Status register (flags, IE), see \ref{sec:sr} \\
+  \hex{01} & SPL     & R/W   & see \reqref{INT-011} & Stack pointer, low byte \\
+  \hex{02} & SPH     & R/W   & see \reqref{INT-011} & Stack pointer, high byte \\
+  \hex{03} & CWP     & R/W   & \hex{00} & Bits 3:0: current register window \\
+  \hex{04} & WSTART  & R/W   & \hex{00} & Bits 3:0: oldest window held in the register file \\
+  \hex{05} & PRIDX   & R/W   & \hex{00} & Bits 5:0: physical register index \\
+  \hex{06} & PRDAT   & R/W   & --       & Read/write of physical register P[PRIDX] \\
+  \hex{08} & INTEN   & R/W   & \hex{00} & Maskable interrupt enable (bit 0 INT0, bit 1 \IIC) \\
+  \hex{09} & INTFLG  & R/W1C & \hex{00} & Pending interrupt flags; writing 1 clears \\
+  \hex{10} & I2CCON  & R/W   & \hex{00} & \IIC{} controller control, see Section~\ref{sec:i2c} \\
+  \hex{11} & I2CSTA  & R/W1C & \hex{00} & \IIC{} controller status \\
+  \hex{12} & I2CADR  & R/W   & \hex{00} & Bits 6:0: 7-bit slave address \\
+  \hex{13} & I2CTXD  & W     & \hex{00} & Byte to transmit \\
+  \hex{14} & I2CRXD  & R     & \hex{00} & Last received byte \\
+  \hex{15} & I2CBRG  & R/W   & \hex{FF} & SCL clock divider \\
+  \multicolumn{4}{@{}l}{\hex{07}, \hex{0A}--\hex{0F}, \hex{16}--\hex{FF}} & Reserved; reads return \hex{00}, writes are ignored \\
+\end{xltabular}
+}
+
+\subsection{Status register SR}
+\label{sec:sr}
+
+\begin{center}
+\small
+\begin{tabularx}{0.85\linewidth}{@{}l l X@{}}
+  \toprule
+  \textbf{Bit} & \textbf{Name} & \textbf{Meaning} \\
+  \midrule
+  0   & C  & Carry / borrow; for \IIC{} instructions: transaction error \\
+  1   & Z  & Result is zero \\
+  2   & N  & Bit 7 of the result (sign) \\
+  3   & V  & Signed (two's complement) overflow \\
+  4--6 & -- & Reserved, read as 0 \\
+  7   & IE & Global enable for maskable interrupts \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Requirements}
+
+\begin{reqtable}
+\req{SFR-001}{The SFR address space \MUST{} contain 256 addresses (8 bits) and
+  \MUST{} be separate from data memory.}
+\req{SFR-002}{The SFRs \MUST{} be implemented as listed in the SFR map,
+  including their reset values.}
+\req{SFR-003}{A read from a reserved address \MUST{} return \hex{00}; a write
+  to it \MUST{} be ignored without raising an exception.}
+\req{SFR-004}{Bits marked R/W1C \MUST{} be cleared by writing 1; writing 0
+  \MUST{} leave them unchanged.}
+\req{SFR-005}{SPL/SPH \SHOULD{} be written in the order SPL, SPH; the
+  implementation \MAY{} block interrupts for one instruction after a write to
+  SPL to avoid an inconsistent SP.}
+\req{SFR-006}{ALU instructions \MUST{} update the flags as listed in the
+  ``Flags'' column of the instruction tables (Section~\ref{sec:isa}); all other
+  instructions \MUSTNOT{} change the flags unless stated otherwise.}
+\end{reqtable}

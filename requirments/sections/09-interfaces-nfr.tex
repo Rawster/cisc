@@ -1,0 +1,61 @@
+% =====================================================================
+\section{External interfaces and non-functional requirements}
+\label{sec:io}
+% =====================================================================
+
+The core exposes the clock, reset, one interrupt input, the two \IIC{} lines and
+the buses of both memories, so that the memories can be either FPGA block RAM
+or external devices.
+
+\subsection{Core signals}
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}l l l X@{}}
+  \toprule
+  \textbf{Signal} & \textbf{Direction} & \textbf{Width} & \textbf{Description} \\
+  \midrule
+  \texttt{CLK}     & in     & 1  & System clock \\
+  \texttt{RST\_N}  & in     & 1  & Reset, active low (\reqref{INT-012}) \\
+  \texttt{INT0\_N} & in     & 1  & External interrupt, falling edge \\
+  \texttt{SDA}     & in/out & 1  & \IIC{} data, open-drain \\
+  \texttt{SCL}     & in/out & 1  & \IIC{} clock, open-drain \\
+  \texttt{P\_ADDR} & out    & 16 & Program memory address \\
+  \texttt{P\_DATA} & in     & 8  & Program memory data \\
+  \texttt{D\_ADDR} & out    & 16 & Data memory address \\
+  \texttt{D\_WDATA}& out    & 8  & Write data \\
+  \texttt{D\_RDATA}& in     & 8  & Read data \\
+  \texttt{D\_WE}   & out    & 1  & Write enable \\
+  \texttt{HALTED}  & out    & 1  & Processor in HALT state (diagnostics) \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Interface requirements}
+
+\begin{reqtable}
+\req{IO-001}{The core \MUST{} provide the signals listed in the core signal table.}
+\req{IO-002}{The memory buses \MUST{} be synchronous with a read latency of
+  1 cycle (compatible with block RAM of typical FPGAs).}
+\req{IO-003}{A top-level variant with embedded memories and tri-state
+  SDA/SCL drivers \MUST{} exist, ready for synthesis on the target board.}
+\end{reqtable}
+
+\subsection{Non-functional requirements}
+
+\begin{reqtable}
+\req{NF-001}{The design \MUST{} be described in a synthesisable HDL
+  (Verilog/SystemVerilog or VHDL -- to be decided).}
+\req{NF-002}{The design \MUST{} be fully synchronous: no latches, no gated
+  clocks and no combinational loops; it \MUST{} pass lint without critical
+  warnings.}
+\req{NF-003}{The target clock frequency \SHOULD{} be at least 50\,MHz on the
+  selected FPGA (to be confirmed once the device is chosen).}
+\req{NF-004}{The \IIC{} timeout and the default value of I2CBRG
+  \MUST{} be parameters (generic/parameter) of the top-level module.}
+\req{NF-005}{Each block (ALU, register file, control unit, \IIC{} controller,
+  interrupt controller) \MUST{} be a separate module with its own testbench.}
+\req{NF-006}{The source code \MUST{} be kept under version control.}
+\req{NF-007}{The documentation \MUST{} include this specification, a
+  microarchitecture description and the instruction timing table.}
+\end{reqtable}

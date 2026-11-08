@@ -1,0 +1,46 @@
+% ---------------------------------------------------------------------
+%  Register windows: 16 blocks of 4 registers, window = 2 blocks
+%  1 unit = 0.2 mm, y grows downwards. Block i starts at x = 24 + 44*i.
+% ---------------------------------------------------------------------
+\begin{tikzpicture}[
+    x=0.2mm, y=-0.2mm,
+    >={Stealth[length=1.8mm,width=1.4mm]},
+    conn/.style={draw=lineclr, line width=0.6pt},
+    lbl/.style={font=\scriptsize},
+  ]
+  % --- 16 blocks ------------------------------------------------------
+  \foreach \i in {0,...,15} {
+    \pgfmathsetmacro{\bx}{24+44*\i}
+    \ifnum\i=4
+      \draw[draw=accent, fill=accent!12, line width=1.1pt, rounded corners=1mm]
+        (\bx,96) rectangle ++(40,40);
+      \node[font=\scriptsize\bfseries] at (\bx+20,116) {B\i};
+    \else
+      \draw[draw=lineclr, line width=0.6pt, rounded corners=1mm]
+        (\bx,96) rectangle ++(40,40);
+      \node[font=\scriptsize] at (\bx+20,116) {B\i};
+    \fi
+  }
+
+  % --- window CWP = 3 (blocks 3, 4) -----------------------------------
+  \draw[conn] (156,90) -- (156,80) -- (240,80) -- (240,90);
+  \node[lbl, anchor=south west] at (156,76) {CWP = 3: R0--R3 = B3, R4--R7 = B4};
+
+  % --- window CWP = 4 (blocks 4, 5) -----------------------------------
+  \draw[conn] (200,142) -- (200,152) -- (284,152) -- (284,142);
+  \node[lbl, anchor=north west] at (200,156) {CWP = 4 (after \texttt{WINC}): R0--R3 = B4, R4--R7 = B5};
+
+  % --- WSTART marker --------------------------------------------------
+  \node[lbl, text=black!60, anchor=south] at (44,92) {WSTART};
+
+  % --- circular wrap-around -------------------------------------------
+  \draw[conn,->] (704,136) -- (704,200) -- (44,200) -- (44,136);
+  \node[lbl, text=black!60, anchor=north] at (374,204)
+    {B15 $\rightarrow$ B0: circular buffer, index mod 16};
+
+  % --- notes ----------------------------------------------------------
+  \node[font=\footnotesize, anchor=west] at (24,248)
+    {B4 is shared: caller's R4--R7 = callee's R0--R3 (arguments and results)};
+  \node[font=\footnotesize, text=black!60, anchor=west] at (24,272)
+    {\texttt{WINC} with (CWP + 2) mod 16 = WSTART $\rightarrow$ WOVF exception, oldest block is spilled};
+\end{tikzpicture}

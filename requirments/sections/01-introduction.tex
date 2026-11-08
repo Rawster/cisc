@@ -1,0 +1,37 @@
+% =====================================================================
+\section{Introduction}
+\label{sec:intro}
+% =====================================================================
+
+This document specifies the requirements for CISC-8: an 8-bit CISC processor
+with a Harvard architecture, 64 general-purpose registers accessed through a
+sliding window of 8 registers, and a hardware \IIC{} controller. It is the
+baseline for the RTL design.
+
+\subsection{Conventions}
+
+Every requirement has a unique identifier of the form \texttt{PREFIX-NNN} and
+is verifiable. The following keywords define the weight of a requirement:
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+  \toprule
+  \textbf{Keyword} & \textbf{Meaning} \\
+  \midrule
+  \MUST{} / \MUSTNOT & Mandatory; failure to comply is a non-conformance. \\
+  \SHOULD & Recommended; any deviation must be justified in the design documentation. \\
+  \MAY & Optional; left to the implementer. \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+Prefixes: \texttt{ARCH} (general architecture), \texttt{MEM} (memory),
+\texttt{REG} (registers), \texttt{SFR} (special function registers),
+\texttt{ISA} (instructions), \texttt{I2C} (\IIC{} controller),
+\texttt{INT} (interrupts and reset), \texttt{IO} (interfaces),
+\texttt{NF} (non-functional).
+
+Hexadecimal numbers are written with the prefix \texttt{0x}, binary numbers
+with \texttt{0b}. Bit 0 is the least significant bit (LSB).
+

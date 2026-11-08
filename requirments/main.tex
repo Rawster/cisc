@@ -1,0 +1,157 @@
+% =====================================================================
+%  CISC-8 Processor -- Requirements Specification
+%  Build:  pdflatex main.tex  (run twice for TOC and references)
+%     or:  latexmk -pdf main.tex
+% =====================================================================
+\documentclass[11pt,a4paper]{article}
+\providecommand\SuspendTagging[1]{}
+\providecommand\ResumeTagging[1]{}
+
+% ---------------------------------------------------------------------
+%  Packages
+% ---------------------------------------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[a4paper,margin=2.3cm,headheight=14pt]{geometry}
+\usepackage{amsmath}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{xltabular}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{caption}
+\usepackage{needspace}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc,positioning,decorations.pathreplacing}
+\usepackage[hidelinks]{hyperref}
+
+% ---------------------------------------------------------------------
+%  Document metadata -- edit here
+% ---------------------------------------------------------------------
+\newcommand{\DocTitle}{CISC-8 Processor}
+\newcommand{\DocSubtitle}{Requirements Specification}
+
+\newcommand{\DocVersion}{0.1 (draft)}
+\newcommand{\DocDate}{8 November 2026}
+\newcommand{\DocAuthor}{Michal Lagosz}
+
+% ---------------------------------------------------------------------
+%  Colours and styles
+% ---------------------------------------------------------------------
+\definecolor{accent}{HTML}{2F6FDB}
+\definecolor{lineclr}{HTML}{8C8C80}
+\definecolor{tint}{HTML}{F1F1EC}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  columns=fullflexible,
+  keepspaces=true,
+  frame=single,
+  rulecolor=\color{lineclr},
+  xleftmargin=1em,
+  framexleftmargin=0.5em,
+  commentstyle=\color{black!55},
+  morecomment=[l]{;},
+}
+
+\setlist{itemsep=2pt,topsep=4pt}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\renewcommand{\arraystretch}{1.25}
+
+% ---------------------------------------------------------------------
+%  Requirement macros
+% ---------------------------------------------------------------------
+% Requirement keywords (RFC 2119 style)
+\newcommand{\MUST}{\textbf{MUST}}
+\newcommand{\MUSTNOT}{\textbf{MUST NOT}}
+\newcommand{\SHOULD}{\textbf{SHOULD}}
+\newcommand{\MAY}{\textbf{MAY}}
+
+% Requirements table:
+%   \begin{reqtable}
+%     \req{ARCH-001}{The processor \MUST ...}
+%   \end{reqtable}
+\newenvironment{reqtable}{%
+  \par\small
+  \xltabular{\linewidth}{@{}>{\ttfamily}p{2.1cm}X@{}}
+  \toprule
+  \normalfont\bfseries ID & \bfseries Requirement \\
+  \midrule
+  \endfirsthead
+  \toprule
+  \normalfont\bfseries ID & \bfseries Requirement (cont.) \\
+  \midrule
+  \endhead
+  \bottomrule
+  \endfoot
+}{%
+  \endxltabular
+}
+\newcommand{\req}[2]{\leavevmode\phantomsection\label{req:#1}#1 & #2 \\}
+% Cross-reference to a requirement by its ID (clickable): \reqref{ISA-040}
+\newcommand{\reqref}[1]{\hyperref[req:#1]{\texttt{#1}}}
+
+% Shorthand
+\newcommand{\IIC}{I\textsuperscript{2}C}
+\newcommand{\reg}[1]{\texttt{#1}}
+\newcommand{\hex}[1]{\texttt{0x#1}}
+
+% ---------------------------------------------------------------------
+%  Header / footer
+% ---------------------------------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\DocTitle{} -- \DocSubtitle}
+\fancyfoot[C]{\small Page \thepage{} of \pageref{LastPage}}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% =====================================================================
+\begin{document}
+
+% ---------------------------------------------------------------------
+%  Title page
+% ---------------------------------------------------------------------
+\begin{titlepage}
+  \centering
+  \vspace*{3cm}
+  {\Huge\bfseries \DocTitle\par}
+  \vspace{0.6cm}
+  {\LARGE \DocSubtitle\par}
+  \vspace{0.4cm}
+  {\large 8-bit CISC processor with Harvard architecture,\\
+   windowed register file and native \IIC{} controller\par}
+  \vspace{2.5cm}
+  \begin{tabular}{@{}ll@{}}
+    \toprule
+    Date            & \DocDate \\
+    Author          & \DocAuthor \\
+    \bottomrule
+  \end{tabular}
+\end{titlepage}
+
+\tableofcontents
+\listoffigures
+\newpage
+
+% ---------------------------------------------------------------------
+%  Body
+% ---------------------------------------------------------------------
+\input{sections/01-introduction}
+\input{sections/02-overview}
+\input{sections/03-architecture-memory}
+\input{sections/04-register-file}
+\input{sections/05-sfr}
+\input{sections/06-isa}
+\input{sections/07-i2c}
+\input{sections/08-interrupts}
+\input{sections/09-interfaces-nfr}
+
+\end{document}
