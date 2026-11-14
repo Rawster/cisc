@@ -35,12 +35,15 @@ The processor is 8-bit (ALU, registers and memory words are 8 bits wide), with
 
 \begin{reqtable}
 \req{MEM-001}{Program memory \MUST{} be organised in 8-bit words, byte-addressed.}
-\req{MEM-002}{The program counter PC \MUST{} be 16 bits wide; the program
-  address space is 64\,KiB (\hex{0000}--\hex{FFFF}).}
-\req{MEM-003}{The physical program memory \MUST{} have a fixed size of
-  8\,KiB, mapped at \hex{0000}--\hex{1FFF}. A fetch from \hex{2000}--\hex{FFFF}
-  \MUST{} return \hex{FF} (the \texttt{TRAP} instruction, see
-  \reqref{ISA-050}).}
+\req{MEM-002}{The program counter PC \MUST{} be 16 bits wide, giving a
+  logical program address space of 64\,KiB (\hex{0000}--\hex{FFFF}).}
+\req{MEM-003}{The physical program memory \MUST{} occupy addresses
+  \hex{0000} to $\mathrm{PMEM\_SIZE}-1$, where PMEM\_SIZE is a synthesis
+  parameter (default: 8\,KiB). An instruction fetch or \texttt{LPM} read
+  from an address $\geq$ PMEM\_SIZE \MUST{} return \hex{FF} (decoded as
+  \texttt{TRAP}, see \reqref{ISA-050}) and \MUSTNOT{} alias to a lower
+  address. The core \MUST{} perform this check itself, independently of
+  the memory connected to \texttt{P\_ADDR}/\texttt{P\_DATA}.}
 \req{MEM-004}{Program memory \MUST{} be read-only for the processor. Its
   contents \MUST{} be loadable from a file (e.g. \texttt{.mem})
   for synthesis and simulation.}
